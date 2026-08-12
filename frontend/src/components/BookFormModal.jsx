@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { apiErrorMessage } from '../services/errors';
 
 const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
   const [formData, setFormData] = useState({
@@ -40,6 +41,12 @@ const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
     }
   }, [editBook, isOpen]);
 
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    if (isOpen) document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -61,20 +68,24 @@ const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
       onSuccess();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.defaultMessage || 'Failed to save book. Check location pattern (e.g. A-04-S2)');
+      setError(apiErrorMessage(err, 'Failed to save the book.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4 z-50"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="book-modal-title"
+    >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-          <h2 className="text-xl font-serif font-bold text-slate-900">
+          <h2 id="book-modal-title" className="text-xl font-serif font-bold text-slate-900">
             {editBook ? 'Edit Book' : 'Add New Book'}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">&times;</button>
+          <button onClick={onClose} aria-label="Close Book Modal" className="text-slate-400 hover:text-slate-600">&times;</button>
         </div>
         
         <div className="p-6 overflow-y-auto">

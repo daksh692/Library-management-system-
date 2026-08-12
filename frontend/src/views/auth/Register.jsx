@@ -1,5 +1,6 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
+import { apiErrorMessage } from '../../services/errors';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 
@@ -20,12 +21,7 @@ const Register = () => {
       setSuccess(res.data); // Should contain the new User ID
       setTimeout(() => navigate('/login'), 5000);
     } catch (err) {
-      if (err.response?.data && typeof err.response.data === 'object') {
-        const errors = Object.values(err.response.data).join(', ');
-        setError(errors);
-      } else {
-        setError(err.response?.data || 'Registration failed.');
-      }
+      setError(apiErrorMessage(err, 'Registration failed.'));
     }
   };
 

@@ -17,3 +17,5 @@ Here are some rules which you will need to follow in this project:
 8) Documentation : Maintain proper documentation for the project. Add proper docstrings for each function and class. Explain the purpose of each file and how to use it.
 
 9) Testing : Add proper unit tests for the project. Ensure that all test cases are covered and the tests are well-written. 
+
+10) never upload IMP_files folder to github. same goes with any apikeys and .env files also .claude and gitignore files.

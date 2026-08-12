@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { apiErrorMessage } from '../../services/errors';
 import TransactionManager from './TransactionManager';
 import UserManager from './UserManager';
 import BookFormModal from '../../components/BookFormModal';
 import ManageCopiesModal from '../../components/ManageCopiesModal';
+import IssueBookModal from '../../components/IssueBookModal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const AdminDashboard = () => {
   const [books, setBooks] = useState([]);
@@ -15,6 +19,12 @@ const AdminDashboard = () => {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCopiesModalOpen, setIsCopiesModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
+  const [issueForBook, setIssueForBook] = useState(null);
+  
+  // Confirm Delete State
+  const [deleteBookConfirm, setDeleteBookConfirm] = useState(null);
+
+  const toast = useToast();
 
   useEffect(() => {
     fetchBooks();
@@ -46,14 +56,16 @@ const AdminDashboard = () => {
     setIsCopiesModalOpen(true);
   };
 
-  const handleDeleteBook = async (book) => {
-    if (window.confirm(`Are you sure you want to delete "${book.name}"? This action cannot be undone.`)) {
-      try {
-        await api.delete(`/admin/books/${book.id}`);
-        fetchBooks();
-      } catch (err) {
-        alert('Failed to delete book. It may be currently issued to a user.');
-      }
+  const handleDeleteBook = async () => {
+    if (!deleteBookConfirm) return;
+    try {
+      await api.delete(`/admin/books/${deleteBookConfirm.id}`);
+      toast.success(`Deleted book "${deleteBookConfirm.name}"`);
+      fetchBooks();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to delete book.'));
+    } finally {
+      setDeleteBookConfirm(null);
     }
   };
 
@@ -122,13 +134,13 @@ const AdminDashboard = () => {
       {searchType === 'transactions' ? (
         <TransactionManager />
       ) : searchType === 'books' ? (
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ISBN</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Title & Author</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Location</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Stock</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -140,12 +152,13 @@ const AdminDashboard = () => {
               <tr><td colSpan="5" className="px-6 py-4 text-center text-slate-500">No books found.</td></tr>
             ) : filteredBooks.map((book) => (
               <tr key={book.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600">{book.isbn}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 hidden md:table-cell">{book.isbn}</td>
                 <td className="px-6 py-4">
                   <div className="text-sm font-semibold text-slate-900">{book.name}</div>
                   <div className="text-sm text-slate-500">{book.author}</div>
+                  <div className="text-xs text-slate-400 font-mono md:hidden mt-1">{book.isbn}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 hidden md:table-cell">
                   <span className="bg-slate-100 px-2 py-1 rounded border border-slate-200">{book.location}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -155,9 +168,16 @@ const AdminDashboard = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => setIssueForBook(book)}
+                    disabled={book.availableCopies <= 0 && book.totalCopies === 0}
+                    className="text-blue-600 hover:text-blue-900 mr-4 disabled:opacity-40"
+                  >
+                    {book.availableCopies > 0 ? 'Issue' : 'Reserve'}
+                  </button>
                   <button onClick={() => handleEditBook(book)} className="text-emerald-600 hover:text-emerald-900 mr-4">Edit</button>
                   <button onClick={() => handleManageCopies(book)} className="text-amber-600 hover:text-amber-900 mr-4">Manage Copies</button>
-                  <button onClick={() => handleDeleteBook(book)} className="text-red-600 hover:text-red-900">Delete</button>
+                  <button onClick={() => setDeleteBookConfirm(book)} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
             ))}
@@ -180,6 +200,20 @@ const AdminDashboard = () => {
         onClose={() => setIsCopiesModalOpen(false)} 
         onSuccess={onModalSuccess} 
         book={selectedBook} 
+      />
+      <IssueBookModal
+        isOpen={!!issueForBook}
+        onClose={() => setIssueForBook(null)}
+        onSuccess={() => { setIssueForBook(null); fetchBooks(); }}
+        initialBook={issueForBook}
+      />
+      <ConfirmDialog
+        isOpen={!!deleteBookConfirm}
+        title="Delete Book"
+        message={`Are you sure you want to delete "${deleteBookConfirm?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete Book"
+        onConfirm={handleDeleteBook}
+        onCancel={() => setDeleteBookConfirm(null)}
       />
     </div>
   );

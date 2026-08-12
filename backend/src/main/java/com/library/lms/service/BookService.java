@@ -1,12 +1,16 @@
 package com.library.lms.service;
 
 import com.library.lms.dto.BookDto;
+import com.library.lms.exception.BusinessRuleException;
+import com.library.lms.exception.ResourceNotFoundException;
 import com.library.lms.model.Book;
 import com.library.lms.repository.BookRepository;
+import com.library.lms.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -18,6 +22,7 @@ import java.util.stream.Collectors;
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final TransactionRepository transactionRepository;
 
     public List<Book> getAllActiveBooks() {
         return bookRepository.findAll().stream()
@@ -45,9 +50,9 @@ public class BookService {
 
     public Book getBookById(String id) {
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Book not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Book", id));
         if (book.isDeleted()) {
-            throw new RuntimeException("Book not found");
+            throw new ResourceNotFoundException("Book", id);
         }
         return book;
     }
@@ -78,14 +83,25 @@ public class BookService {
     }
 
     /**
-     * Updates an existing book's metadata and handles copy count adjustments.
-     * 
-     * @param id The ID of the book to update.
-     * @param dto The updated data.
-     * @return The updated Book entity.
+     * Updates catalogue metadata and reconciles the copy count.
+     *
+     * @throws BusinessRuleException if the new total is below the number currently on loan
      */
     public Book updateBook(String id, BookDto dto) {
         Book book = getBookById(id);
+
+        int currentTotal = book.getTotalCopies() == null ? 0 : book.getTotalCopies();
+        int currentAvailable = book.getAvailableCopies() == null ? 0 : book.getAvailableCopies();
+        int onLoan = currentTotal - currentAvailable;          // issued + held
+        int newTotal = dto.getTotalCopies();
+
+        if (newTotal < onLoan) {
+            throw new BusinessRuleException(
+                    "Cannot reduce to " + newTotal + " copies — " + onLoan
+                            + " are currently issued or on hold. Reduce to " + onLoan + " or more.",
+                    "COPIES_BELOW_ON_LOAN");
+        }
+
         book.setIsbn(dto.getIsbn());
         book.setName(dto.getName());
         book.setAuthor(dto.getAuthor());
@@ -97,22 +113,33 @@ public class BookService {
         if (dto.getPrice() != null) {
             book.setPrice(dto.getPrice());
         }
-        
-        // Adjust available copies if total copies changed
-        int diff = dto.getTotalCopies() - book.getTotalCopies();
-        book.setTotalCopies(dto.getTotalCopies());
-        book.setAvailableCopies(book.getAvailableCopies() + diff);
-        
+
+        book.setTotalCopies(newTotal);
+        book.setAvailableCopies(newTotal - onLoan);
+
         return bookRepository.save(book);
     }
 
     /**
-     * Soft-deletes a book from the catalog to preserve transaction history.
+     * Soft-deletes a book.
      *
-     * @param id The ID of the book to soft delete.
+     * @throws BusinessRuleException if any copy is still issued, held, or queued
      */
     public void deleteBook(String id) {
         Book book = getBookById(id);
+
+        boolean hasActivity = transactionRepository
+                .findByBookId(id).stream()
+                .anyMatch(t -> Set.of("ISSUED", "HELD_FOR_PICKUP", "BOOKED_IN_QUEUE")
+                        .contains(t.getStatus()));
+
+        if (hasActivity) {
+            throw new BusinessRuleException(
+                    "'" + book.getName() + "' still has active loans or reservations "
+                            + "and cannot be removed.",
+                    "BOOK_HAS_ACTIVE_TRANSACTIONS");
+        }
+
         book.setDeleted(true);
         bookRepository.save(book);
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { apiErrorMessage } from '../services/errors';
 
 const ManageCopiesModal = ({ isOpen, onClose, onSuccess, book }) => {
   const [copies, setCopies] = useState(0);
@@ -38,8 +39,7 @@ const ManageCopiesModal = ({ isOpen, onClose, onSuccess, book }) => {
       await api.put(`/admin/books/${book.id}`, updatedBookData);
       onSuccess();
     } catch (err) {
-      console.error(err);
-      setError('Failed to update copies. You cannot decrease copies below the number currently issued.');
+      setError(apiErrorMessage(err, 'Failed to update the copy count.'));
     } finally {
       setLoading(false);
     }

@@ -20,19 +20,27 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+    private final LibraryProperties props;
+
+    public RateLimitingFilter(LibraryProperties props) {
+        this.props = props;
+    }
 
     private Bucket createNewBucket(String path) {
         if (path.startsWith("/api/auth/")) {
-            // Strict limit for auth: 5 requests per minute
-            Bandwidth limit = Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1)));
+            // Strict limit for auth from configuration
+            LibraryProperties.RateLimit.Tier tier = props.getRateLimit().getAuth();
+            Bandwidth limit = Bandwidth.classic(tier.getCapacity(), Refill.greedy(tier.getCapacity(), Duration.ofMinutes(tier.getRefillMinutes())));
             return Bucket.builder().addLimit(limit).build();
         } else if (path.startsWith("/api/public/")) {
-            // Moderate limit for public endpoints: 30 requests per minute
-            Bandwidth limit = Bandwidth.classic(30, Refill.greedy(30, Duration.ofMinutes(1)));
+            // Moderate limit for public endpoints from configuration
+            LibraryProperties.RateLimit.Tier tier = props.getRateLimit().getPublicApi();
+            Bandwidth limit = Bandwidth.classic(tier.getCapacity(), Refill.greedy(tier.getCapacity(), Duration.ofMinutes(tier.getRefillMinutes())));
             return Bucket.builder().addLimit(limit).build();
         } else {
-            // Looser limit for authenticated user actions: 100 requests per minute
-            Bandwidth limit = Bandwidth.classic(100, Refill.greedy(100, Duration.ofMinutes(1)));
+            // Looser limit for authenticated user actions from configuration
+            LibraryProperties.RateLimit.Tier tier = props.getRateLimit().getAuthenticated();
+            Bandwidth limit = Bandwidth.classic(tier.getCapacity(), Refill.greedy(tier.getCapacity(), Duration.ofMinutes(tier.getRefillMinutes())));
             return Bucket.builder().addLimit(limit).build();
         }
     }

@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -30,6 +31,7 @@ public class User implements UserDetails {
 
     private String name;
     
+    @JsonIgnore
     private String passwordHash;
 
     @Indexed(unique = true)
@@ -49,36 +51,43 @@ public class User implements UserDetails {
     private boolean isDeleted = false;
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role));
     }
 
     @Override
+    @JsonIgnore
     public String getPassword() {
         return passwordHash;
     }
 
     @Override
+    @JsonIgnore
     public String getUsername() {
         return userId;
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return !isDeleted;
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return !isDeleted;
     }

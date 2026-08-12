@@ -27,3 +27,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+.claude
+.gitignore
+IMP_files/
+.env
+.idea/

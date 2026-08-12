@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.library.lms.service.BookServiceTest
--------------------------------------------------------------------------------
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.272 s -- in com.library.lms.service.BookServiceTest

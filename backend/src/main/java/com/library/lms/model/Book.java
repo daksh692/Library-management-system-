@@ -47,4 +47,7 @@ public class Book {
 
     @Builder.Default
     private boolean isDeleted = false;
+
+    @Builder.Default
+    private java.util.Date createdAt = new java.util.Date();
 }

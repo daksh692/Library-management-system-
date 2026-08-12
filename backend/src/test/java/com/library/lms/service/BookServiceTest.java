@@ -3,6 +3,7 @@ package com.library.lms.service;
 import com.library.lms.dto.BookDto;
 import com.library.lms.model.Book;
 import com.library.lms.repository.BookRepository;
+import com.library.lms.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -19,6 +20,9 @@ class BookServiceTest {
 
     @Mock
     private BookRepository bookRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
 
     @InjectMocks
     private BookService bookService;

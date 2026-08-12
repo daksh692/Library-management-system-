@@ -9,6 +9,8 @@ import lombok.Data;
 @Data
 public class BookDto {
     @NotBlank(message = "ISBN is required")
+    @Pattern(regexp = "^(97[89])[- ]?\\d{1,5}[- ]?\\d{1,7}[- ]?\\d{1,7}[- ]?\\d$",
+             message = "ISBN must be a valid ISBN-13, e.g. 978-0-13-468599-1")
     private String isbn;
 
     @NotBlank(message = "Name is required")

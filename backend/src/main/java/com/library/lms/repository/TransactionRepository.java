@@ -8,7 +8,20 @@ import java.util.List;
 
 @Repository
 public interface TransactionRepository extends MongoRepository<Transaction, String> {
+
     List<Transaction> findByUserId(String userId);
+
     List<Transaction> findByBookId(String bookId);
+
     List<Transaction> findByStatus(String status);
+
+    // --- added in WS-02 ---
+    List<Transaction> findByBookIdAndStatus(String bookId, String status);
+
+    List<Transaction> findByUserIdAndBookId(String userId, String bookId);
+
+    List<Transaction> findByStatusIn(List<String> statuses);
+
+    /** Used by WS-04 §5 to estimate when the next copy frees up. */
+    List<Transaction> findByBookIdAndStatusOrderByDueDateAsc(String bookId, String status);
 }

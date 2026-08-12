@@ -1,5 +1,6 @@
 package com.library.lms.service;
 
+import com.library.lms.config.LibraryProperties;
 import com.library.lms.dto.ReturnRequest;
 import com.library.lms.dto.TransactionRequest;
 import com.library.lms.model.Book;
@@ -13,10 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Answers;
 
-import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,6 +34,15 @@ class TransactionServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private SequenceGeneratorService sequenceGenerator;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private LibraryProperties props;
+
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TransactionService transactionService;
 
@@ -48,19 +57,23 @@ class TransactionServiceTest {
         req.setBookId("book1");
         req.setUserId("user1");
 
-        Book book = Book.builder().id("book1").availableCopies(1).build();
+        Book book = Book.builder().id("book1").name("Test").availableCopies(1).build();
         User user = User.builder().id("u1").userId("user1").build();
 
         when(bookRepository.findById("book1")).thenReturn(Optional.of(book));
         when(userRepository.findByUserId("user1")).thenReturn(Optional.of(user));
+        when(props.getCard().isEnforceExpiry()).thenReturn(false);
+        when(props.getLoan().getMaxActiveBooks()).thenReturn(5);
+        when(props.getLoan().getPeriodDays()).thenReturn(14);
+        
+        when(bookRepository.tryReserveCopy("book1")).thenReturn(book);
+        
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Transaction result = transactionService.issueBook(req);
 
         assertEquals("ISSUED", result.getStatus());
-        assertEquals(0, book.getAvailableCopies());
         assertNotNull(result.getDueDate());
-        verify(bookRepository, times(1)).save(book);
     }
 
     @Test
@@ -69,17 +82,22 @@ class TransactionServiceTest {
         req.setBookId("book1");
         req.setUserId("user1");
 
-        Book book = Book.builder().id("book1").availableCopies(0).build();
+        Book book = Book.builder().id("book1").name("Test").availableCopies(0).build();
         User user = User.builder().id("u1").userId("user1").build();
 
         when(bookRepository.findById("book1")).thenReturn(Optional.of(book));
         when(userRepository.findByUserId("user1")).thenReturn(Optional.of(user));
+        when(props.getCard().isEnforceExpiry()).thenReturn(false);
+        when(props.getLoan().getMaxActiveBooks()).thenReturn(5);
+        
+        when(bookRepository.tryReserveCopy("book1")).thenReturn(null);
+        when(sequenceGenerator.nextValue(any())).thenReturn(1L);
+        
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Transaction result = transactionService.issueBook(req);
 
         assertEquals("BOOKED_IN_QUEUE", result.getStatus());
-        assertEquals(0, book.getAvailableCopies());
     }
 
     @Test
@@ -88,17 +106,21 @@ class TransactionServiceTest {
         req.setTransactionId("txn1");
         req.setCondition("LOST");
 
-        Transaction txn = Transaction.builder().id("txn1").bookId("book1").status("ISSUED").dueDate(new Date()).build();
+        Transaction txn = Transaction.builder().id("txn1").bookId("book1").userId("u1").status("ISSUED").dueDate(new Date(System.currentTimeMillis() + 100000)).build();
         Book book = Book.builder().id("book1").totalCopies(1).price(50.0).build();
 
         when(transactionRepository.findById("txn1")).thenReturn(Optional.of(txn));
         when(bookRepository.findById("book1")).thenReturn(Optional.of(book));
+        
+        when(props.getPenalty().getDefaultBookPrice()).thenReturn(50.0);
+        when(props.getPenalty().getLostRate()).thenReturn(1.0);
+        
         when(transactionRepository.save(any(Transaction.class))).thenReturn(txn);
 
         Transaction result = transactionService.returnBook(req);
 
         assertEquals("RETURNED", result.getStatus());
         assertEquals(50.0, result.getPenaltyApplied());
-        assertEquals(0, book.getTotalCopies()); // Lost decrements total copies
+        verify(bookRepository, times(1)).writeOffCopy("book1");
     }
 }

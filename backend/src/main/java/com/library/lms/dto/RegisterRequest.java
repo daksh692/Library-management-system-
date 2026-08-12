@@ -3,6 +3,7 @@ package com.library.lms.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
@@ -12,7 +13,8 @@ public class RegisterRequest {
     private String name;
 
     @NotBlank(message = "Phone is required")
-    @Size(min = 10, max = 15, message = "Phone must be between 10 and 15 characters")
+    @Pattern(regexp = "^\\+?[0-9]{10,15}$",
+             message = "Phone must be 10-15 digits, optionally prefixed with +")
     private String phone;
 
     @NotBlank(message = "Email is required")

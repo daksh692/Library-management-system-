@@ -2,8 +2,9 @@ package com.library.lms.util;
 
 import com.library.lms.model.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,12 +16,42 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * Issues and validates HS256 JSON Web Tokens.
+ *
+ * <p>The signing key is supplied via {@code app.jwt.secret} (base64, >= 32 bytes)
+ * so that tokens survive a restart and remain valid across multiple instances.
+ * The application refuses to start if the secret is missing or too short.</p>
+ */
 @Component
 public class JwtUtil {
-    
-    // In a real application, use a securely stored environment variable
-    private final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
+    private final Key signingKey;
+    private final long expirationMs;
+
+    public JwtUtil(
+            @Value("${app.jwt.secret}") String base64Secret,
+            @Value("${app.jwt.expiration-ms}") long expirationMs
+    ) {
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(base64Secret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(
+                    "app.jwt.secret must be valid base64. Generate one with: openssl rand -base64 32");
+        }
+
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "app.jwt.secret must decode to at least 32 bytes for HS256 (got "
+                            + keyBytes.length + "). Generate one with: openssl rand -base64 32");
+        }
+
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        this.expirationMs = expirationMs;
+    }
+
+    /** @return the {@code userId} (e.g. LIB-2026-0001) carried in the token subject. */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -30,15 +61,18 @@ public class JwtUtil {
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+        return claimsResolver.apply(extractAllClaims(token));
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(SECRET_KEY).build().parseClaimsJws(token).getBody();
+        return Jwts.parserBuilder()
+                .setSigningKey(signingKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
-    private Boolean isTokenExpired(String token) {
+    private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -50,14 +84,23 @@ public class JwtUtil {
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours
-                .signWith(SECRET_KEY)
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + expirationMs))
+                .signWith(signingKey)
                 .compact();
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    /** @return true only if the signature verifies, the subject matches, and it has not expired. */
+    public boolean validateToken(String token, UserDetails userDetails) {
+        try {
+            return extractUsername(token).equals(userDetails.getUsername())
+                    && !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
     }
 }

@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { apiErrorMessage } from '../../services/errors';
 import UserFormModal from '../../components/UserFormModal';
 import UserTransactionsModal from '../../components/UserTransactionsModal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const UserManager = ({ searchQuery }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [renewing, setRenewing] = useState(null);
 
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTxnModalOpen, setIsTxnModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Confirm Delete
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState(null);
+  
+  const toast = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -22,7 +31,7 @@ const UserManager = ({ searchQuery }) => {
       const res = await api.get('/admin/users');
       setUsers(res.data);
     } catch (err) {
-      console.error(err);
+      toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -38,14 +47,29 @@ const UserManager = ({ searchQuery }) => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteUser = async (user) => {
-    if (window.confirm(`Are you sure you want to remove ${user.name}? This will mark their account as deleted.`)) {
-      try {
-        await api.delete(`/admin/users/${user.id}`);
-        fetchUsers();
-      } catch (err) {
-        alert('Failed to delete user');
-      }
+  const handleDeleteUser = async () => {
+    if (!deleteUserConfirm) return;
+    try {
+      await api.delete(`/admin/users/${deleteUserConfirm.id}`);
+      toast.success(`Removed user ${deleteUserConfirm.name}`);
+      fetchUsers();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to delete user'));
+    } finally {
+      setDeleteUserConfirm(null);
+    }
+  };
+
+  const handleRenewCard = async (user) => {
+    setRenewing(user.id);
+    try {
+      await api.post(`/admin/users/${user.id}/renew-card`);
+      toast.success(`Renewed library card for ${user.name}`);
+      fetchUsers();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to renew card'));
+    } finally {
+      setRenewing(null);
     }
   };
 
@@ -63,7 +87,8 @@ const UserManager = ({ searchQuery }) => {
     !u.deleted && (
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
       u.userId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.phone?.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
@@ -78,7 +103,7 @@ const UserManager = ({ searchQuery }) => {
         </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -97,7 +122,14 @@ const UserManager = ({ searchQuery }) => {
               <tr key={user.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600">{user.userId}</td>
                 <td className="px-6 py-4">
-                  <div className="text-sm font-semibold text-slate-900">{user.name}</div>
+                  <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                    {user.name}
+                    {user.cardExpired && (
+                      <span className="bg-amber-100 text-amber-800 text-[10px] uppercase px-1.5 py-0.5 rounded font-bold">
+                        Card Expired
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-500">{user.email} | {user.phone}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -106,9 +138,18 @@ const UserManager = ({ searchQuery }) => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                  {user.cardExpired && (
+                    <button
+                      onClick={() => handleRenewCard(user)}
+                      disabled={renewing === user.id}
+                      className="text-amber-600 hover:text-amber-900 disabled:opacity-50"
+                    >
+                      {renewing === user.id ? 'Renewing...' : 'Renew Card'}
+                    </button>
+                  )}
                   <button onClick={() => handleViewTransactions(user)} className="text-blue-600 hover:text-blue-900">View Issued Books</button>
                   <button onClick={() => handleEditUser(user)} className="text-emerald-600 hover:text-emerald-900">Edit</button>
-                  <button onClick={() => handleDeleteUser(user)} className="text-red-600 hover:text-red-900">Remove</button>
+                  <button onClick={() => setDeleteUserConfirm(user)} className="text-red-600 hover:text-red-900">Remove</button>
                 </td>
               </tr>
             ))}
@@ -127,6 +168,15 @@ const UserManager = ({ searchQuery }) => {
         isOpen={isTxnModalOpen} 
         onClose={() => setIsTxnModalOpen(false)} 
         user={selectedUser} 
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteUserConfirm}
+        title="Remove User"
+        message={`Are you sure you want to remove ${deleteUserConfirm?.name}? This will mark their account as deleted.`}
+        confirmLabel="Remove User"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setDeleteUserConfirm(null)}
       />
     </div>
   );
