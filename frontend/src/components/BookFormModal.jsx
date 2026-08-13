@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { apiErrorMessage } from '../services/errors';
 
+/**
+ * BookFormModal component.
+ *
+ * @param {Object} props.isOpen - TODO: Describe isOpen
+ * @param {Object} props.onClose - TODO: Describe onClose
+ * @param {Object} props.onSuccess - TODO: Describe onSuccess
+ * @param {Object} props.editBook - TODO: Describe editBook
+ */
 const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
   const [formData, setFormData] = useState({
     isbn: '',

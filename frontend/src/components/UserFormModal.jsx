@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { apiErrorMessage } from '../services/errors';
 
+/**
+ * UserFormModal component.
+ *
+ * @param {Object} props.isOpen - TODO: Describe isOpen
+ * @param {Object} props.onClose - TODO: Describe onClose
+ * @param {Object} props.onSuccess - TODO: Describe onSuccess
+ * @param {Object} props.editUser - TODO: Describe editUser
+ */
 const UserFormModal = ({ isOpen, onClose, onSuccess, editUser }) => {
   const [formData, setFormData] = useState({
     userId: '',

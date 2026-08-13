@@ -2,6 +2,7 @@ package com.library.lms.service;
 
 import com.library.lms.config.LibraryProperties;
 import com.library.lms.dto.UserDto;
+import com.library.lms.exception.BusinessRuleException;
 import com.library.lms.exception.DuplicateResourceException;
 import com.library.lms.exception.ResourceNotFoundException;
 import com.library.lms.model.User;
@@ -27,6 +28,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final LibraryProperties props;
+    private final PaymentService paymentService;
 
     /** 
      * Retrieves a list of active users.
@@ -81,7 +83,13 @@ public class UserService {
                 .cardEndDate(end)
                 .build();
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        if ("ROLE_USER".equals(saved.getRole()) && props.getCard().getFee() > 0) {
+            paymentService.createPayment(saved.getId(), props.getCard().getFee(), "Library Card Issuance", "CARD_FEE", null);
+        }
+
+        return saved;
     }
 
     /** Renews a card for another validity period from today. */
@@ -90,6 +98,11 @@ public class UserService {
         user.setCardStartDate(new Date());
         user.setCardEndDate(Date.from(Instant.now()
                 .plus(props.getCard().getValidityMonths() * 30L, ChronoUnit.DAYS)));
+        
+        if (props.getCard().getFee() > 0) {
+            paymentService.createPayment(user.getId(), props.getCard().getFee(), "Library Card Renewal", "CARD_FEE", null);
+        }
+
         return userRepository.save(user);
     }
 
@@ -114,6 +127,9 @@ public class UserService {
     }
 
     public void deleteUser(String id) {
+        if (paymentService.hasPendingPayments(id)) {
+            throw new BusinessRuleException("Cannot cancel card: there are outstanding dues.", "PENDING_DUES");
+        }
         User user = getUserById(id);
         user.setDeleted(true);
         userRepository.save(user);

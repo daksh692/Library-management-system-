@@ -2,6 +2,11 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
+/**
+ * ProtectedRoute component.
+ *
+ * @param {Object} props.allowedRoles - TODO: Describe allowedRoles
+ */
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
 
@@ -14,7 +19,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={user.role === 'ROLE_ADMIN' ? '/admin/dashboard' : '/home'} replace />;
   }
 
   return <Outlet />;

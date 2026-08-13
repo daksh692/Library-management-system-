@@ -19,9 +19,14 @@ import java.util.UUID;
 /**
  * Translates exceptions into the project-wide {@link ErrorResponse} contract.
  *
+ * <p><strong>Safe vs. Internal Split:</strong>
+ * Known business rules (e.g. {@link ApiException}) are considered "safe" — their messages 
+ * are surfaced directly to the client. Unanticipated faults ({@link Exception}) are "internal" — 
+ * their stack traces and details are logged with a UUID, while the client receives a generic 
+ * message and the UUID to quote for support.</p>
+ *
  * <p>Rules.md #4: the caller never sees a stack trace, a file path, or a raw
- * driver error. Unexpected faults are logged in full with a correlation id that
- * is echoed to the caller so a support request can be traced to a log line.</p>
+ * driver error.</p>
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

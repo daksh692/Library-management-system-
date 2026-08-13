@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 
+/**
+ * UserTransactionsModal component.
+ *
+ * @param {Object} props.isOpen - TODO: Describe isOpen
+ * @param {Object} props.onClose - TODO: Describe onClose
+ * @param {Object} props.user - TODO: Describe user
+ */
 const UserTransactionsModal = ({ isOpen, onClose, user }) => {
   const [transactions, setTransactions] = useState([]);
   const [books, setBooks] = useState({});

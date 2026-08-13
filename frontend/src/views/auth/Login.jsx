@@ -4,6 +4,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import { apiErrorMessage } from '../../services/errors';
 
+/**
+ * Login view component.
+ */
 const Login = () => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');

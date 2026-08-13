@@ -6,6 +6,11 @@ import UserTransactionsModal from '../../components/UserTransactionsModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/ToastProvider';
 
+/**
+ * UserManager component.
+ *
+ * @param {Object} props.searchQuery - TODO: Describe searchQuery
+ */
 const UserManager = ({ searchQuery }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);

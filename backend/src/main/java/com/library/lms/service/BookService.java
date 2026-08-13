@@ -7,6 +7,8 @@ import com.library.lms.model.Book;
 import com.library.lms.repository.BookRepository;
 import com.library.lms.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,22 +32,38 @@ public class BookService {
                 .collect(Collectors.toList());
     }
 
+    /** Paginated, soft-delete-aware catalogue listing. */
+    public Page<Book> getActiveBooks(Pageable pageable) {
+        return bookRepository.findByIsDeletedFalse(pageable);
+    }
+
+    private final org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+
     /**
-     * Search the catalog for books. Excludes soft-deleted entries.
-     * Searches across name, author, genre, and ISBN fields.
-     *
-     * @param query The search string.
-     * @return A list of matching books.
+     * Text-index search, falling back to regex when the index is absent
+     * (a fresh database, or a local dev instance where it was never created).
      */
     public List<Book> searchBooks(String query) {
-        // Simplified search logic; in production use MongoTemplate text search
-        return bookRepository.findAll().stream()
-                .filter(b -> !b.isDeleted())
-                .filter(b -> (b.getName() != null && b.getName().toLowerCase().contains(query.toLowerCase())) ||
-                             (b.getAuthor() != null && b.getAuthor().toLowerCase().contains(query.toLowerCase())) ||
-                             (b.getGenre() != null && b.getGenre().toLowerCase().contains(query.toLowerCase())) ||
-                             (b.getIsbn() != null && b.getIsbn().contains(query)))
-                .collect(Collectors.toList());
+        if (query == null || query.isBlank()) return List.of();
+        String q = query.trim();
+
+        try {
+            org.springframework.data.mongodb.core.query.TextCriteria criteria = org.springframework.data.mongodb.core.query.TextCriteria.forDefaultLanguage().matching(q);
+            org.springframework.data.mongodb.core.query.Query textQuery = org.springframework.data.mongodb.core.query.TextQuery.queryText(criteria)
+                    .sortByScore()
+                    .addCriteria(org.springframework.data.mongodb.core.query.Criteria.where("isDeleted").is(false));
+
+            List<Book> results = mongoTemplate.find(textQuery, Book.class);
+
+            // ISBN is not in the text index — match it separately.
+            if (results.isEmpty()) {
+                return bookRepository.search(q);
+            }
+            return results;
+        } catch (org.springframework.data.mongodb.UncategorizedMongoDbException e) {
+            // Text index might not be ready/exist, fallback to regex search
+            return bookRepository.search(q);
+        }
     }
 
     public Book getBookById(String id) {

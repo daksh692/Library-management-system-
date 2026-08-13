@@ -3,12 +3,16 @@ import api from '../../services/api';
 import { apiErrorMessage } from '../../services/errors';
 import TransactionManager from './TransactionManager';
 import UserManager from './UserManager';
+import PaymentManager from './PaymentManager';
 import BookFormModal from '../../components/BookFormModal';
 import ManageCopiesModal from '../../components/ManageCopiesModal';
 import IssueBookModal from '../../components/IssueBookModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/ToastProvider';
 
+/**
+ * AdminDashboard view component.
+ */
 const AdminDashboard = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +37,7 @@ const AdminDashboard = () => {
   const fetchBooks = async () => {
     try {
       const res = await api.get('/public/books');
-      setBooks(res.data);
+      setBooks(res.data.content || res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,7 +45,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddBook = () => {
+  /**
+ * handleAddBook view component.
+ */
+const handleAddBook = () => {
     setSelectedBook(null);
     setIsBookModalOpen(true);
   };
@@ -69,7 +76,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const onModalSuccess = () => {
+  /**
+ * onModalSuccess view component.
+ */
+const onModalSuccess = () => {
     setIsBookModalOpen(false);
     setIsCopiesModalOpen(false);
     setSelectedBook(null);
@@ -119,8 +129,14 @@ const AdminDashboard = () => {
           >
             Transactions
           </button>
+          <button 
+            className={`px-4 py-1.5 text-sm font-medium rounded ${searchType === 'payments' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            onClick={() => setSearchType('payments')}
+          >
+            Payments
+          </button>
         </div>
-        {searchType !== 'transactions' && (
+        {searchType !== 'transactions' && searchType !== 'payments' && (
           <input
             type="text"
             value={searchQuery}
@@ -186,6 +202,10 @@ const AdminDashboard = () => {
       </div>
       ) : searchType === 'users' ? (
         <UserManager searchQuery={searchQuery} />
+      ) : searchType === 'transactions' ? (
+        <TransactionManager />
+      ) : searchType === 'payments' ? (
+        <PaymentManager />
       ) : null}
 
       {/* Modals */}

@@ -77,11 +77,15 @@ public class LibraryProperties {
         private int validityMonths = 12;
         /** When true, an expired card blocks borrowing. */
         private boolean enforceExpiry = true;
+        /** Cost to issue or renew a library card. */
+        private double fee = 10.00;
 
         public int getValidityMonths() { return validityMonths; }
         public void setValidityMonths(int v) { this.validityMonths = v; }
         public boolean isEnforceExpiry() { return enforceExpiry; }
         public void setEnforceExpiry(boolean v) { this.enforceExpiry = v; }
+        public double getFee() { return fee; }
+        public void setFee(double v) { this.fee = v; }
     }
 
     /** Rate limiting policy. */

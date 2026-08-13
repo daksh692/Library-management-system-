@@ -13,6 +13,13 @@ import org.springframework.data.mongodb.core.query.Update;
  *
  * <p>The class name suffix {@code Impl} is required — Spring Data discovers custom
  * repository fragments by that convention.</p>
+ *
+ * <p><strong>Atomic Operations vs. Read-Then-Write:</strong>
+ * We use atomic {@code findAndModify} operations here rather than a typical fetch, mutate, 
+ * and save sequence. This prevents race conditions where two concurrent requests could
+ * read the same {@code availableCopies} value and both successfully borrow the final copy.
+ * By pushing the decrement and the {@code > 0} condition into a single database command,
+ * we ensure correctness without needing heavy pessimistic locking.</p>
  */
 @RequiredArgsConstructor
 public class BookRepositoryImpl implements BookRepositoryCustom {

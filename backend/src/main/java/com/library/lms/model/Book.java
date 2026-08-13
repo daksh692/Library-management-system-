@@ -4,14 +4,22 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@CompoundIndexes({
+    @CompoundIndex(name = "new_arrivals", def = "{'isDeleted': 1, 'createdAt': -1}"),
+    @CompoundIndex(name = "recommendations", def = "{'isDeleted': 1, 'genre': 1}")
+})
 @Document(collection = "books")
 public class Book {
 
@@ -21,17 +29,18 @@ public class Book {
     @Indexed
     private String isbn;
 
-    @Indexed
+    @TextIndexed(weight = 10)
     private String name;
 
-    @Indexed
+    @TextIndexed(weight = 5)
     private String author;
 
+    @TextIndexed(weight = 1)
     private String shortDescription;
 
     private String longDescription;
 
-    @Indexed
+    @TextIndexed(weight = 3)
     private String genre;
 
     private String photoUrl;
@@ -48,6 +57,6 @@ public class Book {
     @Builder.Default
     private boolean isDeleted = false;
 
-    @Builder.Default
-    private java.util.Date createdAt = new java.util.Date();
+    @CreatedDate
+    private java.util.Date createdAt;
 }

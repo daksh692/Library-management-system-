@@ -47,6 +47,7 @@ public class User implements UserDetails {
 
     private List<String> previouslyReadGenre;
 
+    @Indexed
     @Builder.Default
     private boolean isDeleted = false;
 

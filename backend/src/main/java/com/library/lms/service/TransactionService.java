@@ -51,6 +51,7 @@ public class TransactionService {
     private final SequenceGeneratorService sequenceGenerator;
     private final LibraryProperties props;
     private final NotificationService notificationService;   // WS-05
+    private final PaymentService paymentService;   // WS-05
 
     // ------------------------------------------------------------------
     // Issue
@@ -203,6 +204,7 @@ public class TransactionService {
         }
 
         if (txn.getPenaltyApplied() > 0) {
+            paymentService.createPayment(txn.getUserId(), txn.getPenaltyApplied(), "Book Penalty", "BOOK_FINE", txn.getId());
             userRepository.findById(txn.getUserId()).ifPresent(user ->
                     notificationService.notifyPenalty(user, book, txn.getPenaltyApplied()));
         }
@@ -282,16 +284,14 @@ public class TransactionService {
         }
 
         txn.setPenaltyPaid(true);
+        paymentService.settlePaymentByReferenceId(transactionId);
         log.info("Fine of {} settled on transaction {}", txn.getPenaltyApplied(), transactionId);
         return transactionRepository.save(txn);
     }
 
-    /** @return total unpaid fines across every transaction for this patron. */
+    /** @return total unpaid fines across every transaction and card fees for this patron. */
     public double outstandingFines(String userObjectId) {
-        return transactionRepository.findByUserId(userObjectId).stream()
-                .filter(t -> !t.isPenaltyPaid())
-                .mapToDouble(t -> t.getPenaltyApplied() == null ? 0.0 : t.getPenaltyApplied())
-                .sum();
+        return paymentService.getOutstandingDues(userObjectId);
     }
 
     private double calculatePenalty(Transaction txn, Book book, String condition, Date returnedAt) {

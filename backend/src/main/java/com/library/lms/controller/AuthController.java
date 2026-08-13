@@ -6,6 +6,7 @@ import com.library.lms.dto.RegisterRequest;
 import com.library.lms.model.User;
 import com.library.lms.repository.UserRepository;
 import com.library.lms.util.JwtUtil;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+@Tag(name = "Authentication", description = "Login and registration")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -29,22 +31,39 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final com.library.lms.service.LoginAttemptService loginAttemptService;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUserId(), request.getPassword())
-        );
 
-        User user = (User) authentication.getPrincipal();
-        String token = jwtUtil.generateToken(user);
+        long wait = loginAttemptService.secondsUntilAllowed(request.getUserId());
+        if (wait > 0) {
+            throw new com.library.lms.exception.BusinessRuleException(
+                    "Too many failed attempts. Please wait " + wait + " seconds before trying again.",
+                    "LOGIN_BACKOFF");
+        }
 
-        return ResponseEntity.ok(AuthResponse.builder()
-                .token(token)
-                .userId(user.getUserId())
-                .name(user.getName())
-                .role(user.getRole())
-                .build());
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUserId(), request.getPassword())
+            );
+
+            loginAttemptService.recordSuccess(request.getUserId());
+
+            User user = (User) authentication.getPrincipal();
+            String token = jwtUtil.generateToken(user);
+
+            return ResponseEntity.ok(AuthResponse.builder()
+                    .token(token)
+                    .userId(user.getUserId())
+                    .name(user.getName())
+                    .role(user.getRole())
+                    .build());
+
+        } catch (org.springframework.security.core.AuthenticationException ex) {
+            loginAttemptService.recordFailure(request.getUserId());
+            throw ex;
+        }
     }
 
     @PostMapping("/register")

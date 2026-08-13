@@ -10,9 +10,13 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 /**
- * Hands out gap-free, collision-free monotonic numbers via an atomic {@code $inc}.
+ * Hands out collision-free monotonic numbers via an atomic {@code $inc}.
  *
- * <p>Used for reservation queue positions and for human-readable member ids.</p>
+ * <p><strong>Monotonic, but not contiguous:</strong>
+ * This sequence is guaranteed to go up, but gaps will occur. If a transaction draws a 
+ * sequence number and then rolls back, that number is lost. This is acceptable for 
+ * queue positions and member IDs, where ordering and uniqueness matter, but contiguousness 
+ * does not.</p>
  */
 @Service
 @RequiredArgsConstructor

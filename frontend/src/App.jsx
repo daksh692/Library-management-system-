@@ -7,6 +7,7 @@ import Register from './views/auth/Register';
 import UserDashboard from './views/user/UserDashboard';
 import BookDetails from './views/user/BookDetails';
 import AdminDashboard from './views/admin/AdminDashboard';
+import SearchResults from './views/user/SearchResults';
 import { ToastProvider } from './components/ui/ToastProvider';
 
 function App() {
@@ -24,9 +25,14 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" replace />} />
 
                 {/* User Protected Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_USER', 'ROLE_ADMIN']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_USER']} />}>
                   <Route path="/home" element={<UserDashboard />} />
+                </Route>
+
+                {/* Common Protected Routes */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_USER', 'ROLE_ADMIN']} />}>
                   <Route path="/book/:id" element={<BookDetails />} />
+                  <Route path="/search" element={<SearchResults />} />
                 </Route>
 
                 {/* Admin Protected Routes */}

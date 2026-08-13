@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
+import { apiErrorMessage } from '../../services/errors';
 import { ArrowLeft } from 'lucide-react';
+import { useToast } from '../../components/ui/ToastProvider';
 
+/**
+ * BookDetails view component.
+ */
 const BookDetails = () => {
   const { id } = useParams();
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const [reserving, setReserving] = useState(false);
+  const toast = useToast();
+  
+  const [related, setRelated] = useState([]);
+  const [policy, setPolicy] = useState({ loanPeriodDays: 14 });
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -20,7 +31,27 @@ const BookDetails = () => {
       }
     };
     fetchBook();
+    
+    api.get(`/public/books/${id}/related`, { params: { limit: 6 } })
+      .then((res) => setRelated(res.data))
+      .catch(() => setRelated([]));
+      
+    api.get('/public/books/policy')
+      .then((r) => setPolicy(r.data))
+      .catch(() => {});
   }, [id]);
+
+  const handleReserve = async () => {
+    setReserving(true);
+    try {
+      const res = await api.post('/user/reservations', { bookId: book.id });
+      toast.success(`Reserved. You are number ${res.data.queueSequence} in the queue.`);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not reserve this book.'));
+    } finally {
+      setReserving(false);
+    }
+  };
 
   if (loading) return <div className="p-8 text-slate-500">Loading details...</div>;
   if (!book) return <div className="p-8 text-amber-700">Book not found.</div>;
@@ -73,7 +104,7 @@ const BookDetails = () => {
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Max Loan Period</p>
-                <p className="font-sans text-slate-900 mt-1">14 Days</p>
+                <p className="font-sans text-slate-900 mt-1">{policy.loanPeriodDays} Days</p>
               </div>
             </div>
 
@@ -87,20 +118,53 @@ const BookDetails = () => {
                 <span className="text-sm text-emerald-700">{book.availableCopies} of {book.totalCopies} copies</span>
               </div>
             ) : (
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-100 p-4 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <span className="h-3 w-3 bg-amber-500 rounded-full"></span>
-                  <span className="text-amber-800 font-medium">Currently Unavailable</span>
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="h-3 w-3 bg-amber-500 rounded-full" />
+                    <span className="text-amber-800 font-medium">
+                      {book.estimatedAvailableOn
+                        ? `Unavailable — expected ${new Date(book.estimatedAvailableOn).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                        : 'Currently Unavailable'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleReserve}
+                    disabled={reserving}
+                    className="text-sm font-semibold text-amber-900 bg-white border border-amber-200 px-4 py-2 rounded shadow-sm hover:bg-amber-100 disabled:opacity-40 transition-colors"
+                  >
+                    {reserving ? 'Reserving…' : 'Reserve Next'}
+                  </button>
                 </div>
-                <button className="text-sm font-semibold text-amber-900 bg-white border border-amber-200 px-4 py-2 rounded shadow-sm hover:bg-amber-100 transition-colors">
-                  Reserve Next
-                </button>
+                <p className="text-xs text-amber-700">
+                  Reserving adds you to the queue. You will be notified when a copy is ready and
+                  will have 48 hours to collect it.
+                </p>
               </div>
             )}
           </div>
         </div>
 
       </div>
+
+      {related.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-2xl font-serif font-bold text-slate-900 mb-6">Related Books</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {related.map((b) => (
+              <Link key={b.id} to={`/book/${b.id}`} className="group">
+                <div className="aspect-[2/3] bg-slate-200 rounded-md overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                  {b.photoUrl
+                    ? <img src={b.photoUrl} alt={b.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 font-serif p-2 text-center">{b.name}</div>}
+                </div>
+                <p className="text-sm font-medium text-slate-900 mt-2 line-clamp-2 leading-snug">{b.name}</p>
+                <p className="text-xs text-slate-500 line-clamp-1">{b.author}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

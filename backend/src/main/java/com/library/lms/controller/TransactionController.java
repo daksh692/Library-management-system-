@@ -12,12 +12,17 @@ import com.library.lms.repository.UserRepository;
 import com.library.lms.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
 
+@Tag(name = "Transactions", description = "Issuing, returning, reservations, and fines")
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -35,6 +40,20 @@ public class TransactionController {
     }
 
     // Admin Endpoints
+    @Operation(
+        summary = "Issue a book or enqueue the patron",
+        description = """
+            Issues immediately when a copy is free. When none is, the patron joins the
+            reservation queue and is notified as soon as one is returned.
+
+            Rejected when the card has expired, the borrowing limit is reached, or the
+            patron already holds this title.
+            """)
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Issued, or queued"),
+        @ApiResponse(responseCode = "404", description = "Book or patron not found"),
+        @ApiResponse(responseCode = "409", description = "A borrowing rule was violated")
+    })
     @PostMapping("/admin/transactions/issue")
     public ResponseEntity<TransactionResponse> issueBook(@Valid @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(enrich(transactionService.issueBook(request)));

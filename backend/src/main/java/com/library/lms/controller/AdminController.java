@@ -10,6 +10,7 @@ import com.library.lms.model.User;
 import com.library.lms.service.BookService;
 import com.library.lms.service.TransactionService;
 import com.library.lms.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Tag(name = "Admin / Librarians", description = "Catalogue and directory management")
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{20}) - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <!-- Console stays plain so the container runtime can collect it. -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{ISO8601} %-5level [%thread] %logger{40} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>application.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>application-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{ISO8601} %-5level [%thread] %logger{40} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <!-- Security events deserve their own stream, kept far longer. -->
+        <appender name="SECURITY" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>security.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>security-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+                <maxHistory>90</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{ISO8601} %-5level - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <logger name="com.library.lms.service.LoginAttemptService" level="INFO" additivity="false">
+            <appender-ref ref="SECURITY"/>
+            <appender-ref ref="CONSOLE"/>
+        </logger>
+        <logger name="com.library.lms.config.RateLimitingFilter" level="INFO" additivity="false">
+            <appender-ref ref="SECURITY"/>
+        </logger>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+        <logger name="com.library.lms" level="INFO"/>
+    </springProfile>
+
+</configuration>

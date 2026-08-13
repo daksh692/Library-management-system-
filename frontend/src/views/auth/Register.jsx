@@ -4,6 +4,9 @@ import { apiErrorMessage } from '../../services/errors';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 
+/**
+ * Register view component.
+ */
 const Register = () => {
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);

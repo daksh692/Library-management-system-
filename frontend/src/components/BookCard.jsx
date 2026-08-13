@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 
+/**
+ * BookCard component.
+ *
+ * @param {Object} props.book - TODO: Describe book
+ */
 const BookCard = ({ book }) => {
   return (
     <div className="flex bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-48">

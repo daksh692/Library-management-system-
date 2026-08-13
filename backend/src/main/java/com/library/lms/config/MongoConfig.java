@@ -18,10 +18,10 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 @EnableMongoAuditing
 public class MongoConfig {
 
-    // @Bean
-    // public MongoTransactionManager transactionManager(MongoDatabaseFactory dbFactory) {
-    //     return new MongoTransactionManager(dbFactory);
-    // }
+    @Bean
+    public MongoTransactionManager transactionManager(MongoDatabaseFactory dbFactory) {
+        return new MongoTransactionManager(dbFactory);
+    }
 
     @Bean
     public MongoTemplate mongoTemplate(MongoDatabaseFactory dbFactory) {
