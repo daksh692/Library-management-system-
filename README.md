@@ -29,7 +29,7 @@ discovery experience and a librarian command centre — built on Spring Boot, Mo
 ## Architecture
 
 ```
-React (Vite) ──JWT over HTTPS──► Spring Boot ──► MongoDB
+React (Vite) ──HttpOnly Cookie over HTTPS──► Spring Boot ──► MongoDB
    │                                  │
    ├─ AuthContext, ProtectedRoute      ├─ SecurityConfig, JwtAuthenticationFilter
    ├─ Axios + interceptors             ├─ Controllers → Services → Repositories
@@ -97,6 +97,7 @@ $env:MONGODB_URI = "mongodb://localhost:27017/lms?replicaSet=rs0"
 |---|---|---|---|
 | `JWT_SECRET` | **yes** | — | Base64, ≥32 bytes. Token signing key |
 | `MONGODB_URI` | no | `mongodb://localhost:27017/lms?replicaSet=rs0` | Database connection |
+| `APP_ADMIN_PASSWORD` | no | — | Administrator password seeded on first boot |
 | `EMAIL_ENABLED` | no | `false` | When false, emails are logged not sent |
 | `SMTP_HOST` / `SMTP_PORT` | no | `smtp.gmail.com` / `587` | Only used when email is enabled |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | no | — | Never commit these |
@@ -122,13 +123,11 @@ Runs on `http://localhost:5173`.
 
 ### Demo credentials
 
-> Development only. `DataSeeder` is annotated `@Profile("!prod")` and never runs in production.
+> Development only. `DataSeeder` handles initial setup. Set `APP_ADMIN_PASSWORD` via environment variables to secure the default admin account.
 
 | Role | User ID | Password |
 |---|---|---|
-| Admin | `admin` | `admin123` |
-| Patron | `user1` | `password` |
-| Patron | `user2` | `password` |
+| Admin | `admin` | *(Set via `APP_ADMIN_PASSWORD`)* |
 
 ---
 
@@ -210,9 +209,10 @@ npm run lint
 ## Security
 
 - **Passwords** BCrypt-hashed; never serialized into any API response
-- **Tokens** HS256 JWT, key supplied by environment, 10-hour expiry
+- **Tokens** HS256 JWT, key supplied by environment, stored exclusively in `HttpOnly`, `Secure`, `SameSite=None` HTTP cookies to mitigate XSS risks
 - **Authorisation** enforced at the filter chain, not in controllers
-- **Rate limiting** tiered per route class, with per-account limits and exponential backoff on auth
+- **Rate limiting** IP-based token bucket strategy (e.g., max 5 attempts per 15 minutes for login) plus exponential backoff
+- **Cross-Origin Deployments** The frontend uses Vercel's edge network to proxy `/api` requests directly to the backend. This eliminates CORS overhead and resolves third-party cross-site cookie restrictions in modern browsers
 - **Validation** every input is checked against a strict schema and rejected, not sanitised
 - **Errors** never leak stack traces, paths, or database messages
 
