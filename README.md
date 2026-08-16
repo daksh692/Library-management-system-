@@ -242,17 +242,7 @@ frontend/src/
 └── views/         auth/, user/, admin/
 ```
 
-## Documentation
 
-| Document | Contents |
-|---|---|
-| [`IMP_Files/PRD.md`](IMP_Files/PRD.md) | Product requirements |
-| [`IMP_Files/architecture.md`](IMP_Files/architecture.md) | System design and state machine |
-| [`IMP_Files/Desigine.md`](IMP_Files/Desigine.md) | Design system |
-| [`IMP_Files/Rules.md`](IMP_Files/Rules.md) | Engineering standards |
-| [`IMP_Files/STRUCTURE.md`](IMP_Files/STRUCTURE.md) | File-by-file map |
-| [`IMP_Files/ASSESSMENT.md`](IMP_Files/ASSESSMENT.md) | Compliance audit |
-| [`IMP_Files/upgrade/`](IMP_Files/upgrade/) | Upgrade workstreams |
 
 ## Licence
 
