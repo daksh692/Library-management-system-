@@ -7,6 +7,9 @@ import com.library.lms.dto.response.UserResponse;
 import com.library.lms.model.Book;
 import com.library.lms.model.Transaction;
 import com.library.lms.model.User;
+import com.library.lms.repository.BookRepository;
+import com.library.lms.repository.PaymentRepository;
+import com.library.lms.repository.TransactionRepository;
 import com.library.lms.service.BookService;
 import com.library.lms.service.TransactionService;
 import com.library.lms.service.UserService;
@@ -16,7 +19,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Tag(name = "Admin / Librarians", description = "Catalogue and directory management")
@@ -28,6 +34,9 @@ public class AdminController {
     private final BookService bookService;
     private final UserService userService;
     private final TransactionService transactionService;
+    private final BookRepository bookRepository;
+    private final TransactionRepository transactionRepository;
+    private final PaymentRepository paymentRepository;
 
     // --- Book Endpoints ---
     
@@ -90,5 +99,15 @@ public class AdminController {
     @GetMapping("/users/{userId}/transactions")
     public ResponseEntity<List<Transaction>> getUserTransactions(@PathVariable String userId) {
         return ResponseEntity.ok(transactionService.getActiveTransactionsForUser(userId));
+    }
+
+    @GetMapping("/metrics")
+    public ResponseEntity<Map<String, Long>> getMetrics() {
+        Map<String, Long> metrics = new HashMap<>();
+        metrics.put("totalBooks", bookRepository.countByIsDeletedFalse());
+        metrics.put("activeLoans", transactionRepository.countByStatus("ISSUED"));
+        metrics.put("overdueItems", transactionRepository.countByStatusAndDueDateBefore("ISSUED", new Date()));
+        metrics.put("unpaidFines", paymentRepository.countByStatus("PENDING"));
+        return ResponseEntity.ok(metrics);
     }
 }

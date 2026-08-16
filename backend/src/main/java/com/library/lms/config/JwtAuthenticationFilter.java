@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 
 @Component
@@ -27,16 +28,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userId;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        Cookie[] cookies = request.getCookies();
+        String tokenFromCookie = null;
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("token".equals(cookie.getName())) {
+                    tokenFromCookie = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // Fallback to Authorization header if no cookie is found, to avoid completely breaking things if cookie is lost
+        final String authHeader = request.getHeader("Authorization");
+        if (tokenFromCookie == null && (authHeader == null || !authHeader.startsWith("Bearer "))) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        jwt = tokenFromCookie != null ? tokenFromCookie : authHeader.substring(7);
         try {
             userId = jwtUtil.extractUsername(jwt);
             

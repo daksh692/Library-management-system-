@@ -15,6 +15,9 @@ public interface TransactionRepository extends MongoRepository<Transaction, Stri
 
     List<Transaction> findByStatus(String status);
 
+    long countByStatus(String status);
+    long countByStatusAndDueDateBefore(String status, java.util.Date date);
+
     // --- added in WS-02 ---
     List<Transaction> findByBookIdAndStatus(String bookId, String status);
 

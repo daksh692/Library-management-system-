@@ -19,6 +19,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.web.bind.annotation.GetMapping;
+
 import java.util.UUID;
 
 @Tag(name = "Authentication", description = "Login and registration")
@@ -53,12 +57,21 @@ public class AuthController {
             User user = (User) authentication.getPrincipal();
             String token = jwtUtil.generateToken(user);
 
-            return ResponseEntity.ok(AuthResponse.builder()
-                    .token(token)
-                    .userId(user.getUserId())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .build());
+            ResponseCookie cookie = ResponseCookie.from("token", token)
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(24 * 60 * 60)
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(AuthResponse.builder()
+                        .userId(user.getUserId())
+                        .name(user.getName())
+                        .role(user.getRole())
+                        .build());
 
         } catch (org.springframework.security.core.AuthenticationException ex) {
             loginAttemptService.recordFailure(request.getUserId());
@@ -88,5 +101,32 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok("User registered successfully. Your User ID is: " + generatedUserId);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse> me(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return ResponseEntity.status(401).build();
+        }
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(AuthResponse.builder()
+                .userId(user.getUserId())
+                .name(user.getName())
+                .role(user.getRole())
+                .build());
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        ResponseCookie cookie = ResponseCookie.from("token", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body("Logged out successfully");
     }
 }

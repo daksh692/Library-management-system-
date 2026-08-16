@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface PaymentRepository extends MongoRepository<Payment, String> {
     List<Payment> findByUserId(String userId);
     List<Payment> findByStatus(String status);
+    long countByStatus(String status);
     List<Payment> findByUserIdAndStatus(String userId, String status);
     boolean existsByUserIdAndStatus(String userId, String status);
     Optional<Payment> findByReferenceId(String referenceId);

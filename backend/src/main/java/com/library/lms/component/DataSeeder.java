@@ -5,6 +5,7 @@ import com.library.lms.model.User;
 import com.library.lms.repository.BookRepository;
 import com.library.lms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -19,46 +20,23 @@ public class DataSeeder implements CommandLineRunner {
     private final BookRepository bookRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.admin.password:}")
+    private String adminPassword;
+
     @Override
     public void run(String... args) throws Exception {
-        if (userRepository.findByUserId("admin").isEmpty()) {
+        if (!adminPassword.isEmpty() && userRepository.findByUserId("admin").isEmpty()) {
             User admin = User.builder()
                     .userId("admin")
                     .name("System Administrator")
                     .email("admin@library.local")
                     .phone("0000000000")
-                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .passwordHash(passwordEncoder.encode(adminPassword))
                     .role("ROLE_ADMIN")
                     .isDeleted(false)
                     .build();
             userRepository.save(admin);
-            System.out.println("Default admin user created: admin / admin123");
-        }
-
-        // Add some test users
-        if (userRepository.findByUserId("user1").isEmpty()) {
-            User user1 = User.builder()
-                    .userId("user1")
-                    .name("Alice Smith")
-                    .email("alice@example.com")
-                    .phone("1111111111")
-                    .passwordHash(passwordEncoder.encode("password"))
-                    .role("ROLE_USER")
-                    .isDeleted(false)
-                    .build();
-            userRepository.save(user1);
-
-            User user2 = User.builder()
-                    .userId("user2")
-                    .name("Bob Johnson")
-                    .email("bob@example.com")
-                    .phone("2222222222")
-                    .passwordHash(passwordEncoder.encode("password"))
-                    .role("ROLE_USER")
-                    .isDeleted(false)
-                    .build();
-            userRepository.save(user2);
-            System.out.println("Test users created: user1 / password, user2 / password");
+            System.out.println("Default admin user created from environment variable");
         }
 
         // Add some test books

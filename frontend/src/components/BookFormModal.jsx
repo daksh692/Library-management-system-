@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { apiErrorMessage } from '../services/errors';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 /**
  * BookFormModal component.
@@ -55,6 +56,8 @@ const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
+  const trapRef = useFocusTrap(isOpen);
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -87,6 +90,7 @@ const BookFormModal = ({ isOpen, onClose, onSuccess, editBook }) => {
          role="dialog"
          aria-modal="true"
          aria-labelledby="book-modal-title"
+         ref={trapRef}
     >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-slate-200 flex justify-between items-center">

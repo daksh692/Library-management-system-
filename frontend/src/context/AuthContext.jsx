@@ -8,23 +8,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check local storage for token on mount
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const fetchUser = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        setUser(response.data);
+      } catch (err) {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
   }, []);
 
   const login = async (credentials) => {
     const response = await api.post('/auth/login', credentials);
-    const { token, userId, name, role } = response.data;
+    const { userId, name, role } = response.data;
     
     const userData = { userId, name, role };
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
@@ -33,9 +34,12 @@ export const AuthProvider = ({ children }) => {
     return await api.post('/auth/register', data);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error('Logout failed', err);
+    }
     setUser(null);
   };
 

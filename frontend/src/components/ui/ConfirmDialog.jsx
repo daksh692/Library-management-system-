@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /**
  * Modal confirmation. Render conditionally on `isOpen`.
@@ -24,6 +25,8 @@ const ConfirmDialog = ({
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onCancel]);
 
+  const trapRef = useFocusTrap(isOpen);
+
   if (!isOpen) return null;
 
   const confirmStyles = variant === 'danger'
@@ -37,6 +40,7 @@ const ConfirmDialog = ({
       aria-modal="true"
       aria-labelledby="confirm-title"
       onClick={onCancel}
+      ref={trapRef}
     >
       <div
         className="bg-white rounded-lg shadow-xl w-full max-w-md"

@@ -120,7 +120,14 @@ const UserManager = ({ searchQuery }) => {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {loading ? (
-              <tr><td colSpan="4" className="px-6 py-4 text-center text-slate-500">Loading users...</td></tr>
+              [...Array(5)].map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-32 mb-2"></div><div className="h-3 bg-slate-200 rounded w-48"></div></td>
+                  <td className="px-6 py-4"><div className="h-6 bg-slate-200 rounded-full w-16"></div></td>
+                  <td className="px-6 py-4 text-right"><div className="h-4 bg-slate-200 rounded w-48 ml-auto"></div></td>
+                </tr>
+              ))
             ) : filteredUsers.length === 0 ? (
               <tr><td colSpan="4" className="px-6 py-4 text-center text-slate-500">No active users found.</td></tr>
             ) : filteredUsers.map((user) => (

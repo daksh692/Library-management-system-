@@ -26,6 +26,8 @@ public interface BookRepository extends MongoRepository<Book, String>, BookRepos
     /** All non-deleted books. */
     List<Book> findByIsDeletedFalse();
 
+    long countByIsDeletedFalse();
+
     @Query("{ 'isDeleted': false, $or: [ " +
            "{ 'name':   { $regex: ?0, $options: 'i' } }, " +
            "{ 'author': { $regex: ?0, $options: 'i' } }, " +

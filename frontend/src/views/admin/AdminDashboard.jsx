@@ -16,8 +16,11 @@ import { useToast } from '../../components/ui/ToastProvider';
 const AdminDashboard = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState(null);
   const [searchType, setSearchType] = useState('books'); // 'books' or 'users'
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Modal States
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -32,18 +35,47 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchBooks();
-  }, []);
+    fetchMetrics();
+  }, [page]);
+
+  const fetchMetrics = async () => {
+    try {
+      const res = await api.get('/admin/metrics');
+      setMetrics(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchBooks = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/public/books');
+      // If we have a query, use search endpoint, otherwise paginated get
+      const url = searchQuery 
+        ? `/public/books/search?query=${encodeURIComponent(searchQuery)}`
+        : `/public/books?page=${page}&size=20`;
+      const res = await api.get(url);
       setBooks(res.data.content || res.data);
+      if (res.data.totalPages) {
+        setTotalPages(res.data.totalPages);
+      } else {
+        setTotalPages(1); // search endpoint returns unpaginated list
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(0); // reset page
+      fetchBooks();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   /**
  * handleAddBook view component.
@@ -108,6 +140,36 @@ const onModalSuccess = () => {
         </button>
       </div>
 
+      {/* Metric Cards */}
+      {metrics && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="bg-white overflow-hidden shadow rounded-lg border border-slate-200">
+            <div className="px-4 py-5 sm:p-6">
+              <dt className="text-sm font-medium text-slate-500 truncate">Total Books</dt>
+              <dd className="mt-1 text-3xl font-semibold text-slate-900">{metrics.totalBooks}</dd>
+            </div>
+          </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg border border-slate-200">
+            <div className="px-4 py-5 sm:p-6">
+              <dt className="text-sm font-medium text-slate-500 truncate">Active Loans</dt>
+              <dd className="mt-1 text-3xl font-semibold text-slate-900">{metrics.activeLoans}</dd>
+            </div>
+          </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg border border-slate-200">
+            <div className="px-4 py-5 sm:p-6">
+              <dt className="text-sm font-medium text-slate-500 truncate">Overdue Items</dt>
+              <dd className="mt-1 text-3xl font-semibold text-red-600">{metrics.overdueItems}</dd>
+            </div>
+          </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg border border-slate-200">
+            <div className="px-4 py-5 sm:p-6">
+              <dt className="text-sm font-medium text-slate-500 truncate">Unpaid Fines</dt>
+              <dd className="mt-1 text-3xl font-semibold text-amber-600">{metrics.unpaidFines}</dd>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dual Search Toggle */}
       <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm mb-8 flex space-x-4">
         <div className="flex bg-slate-100 p-1 rounded-md">
@@ -163,7 +225,15 @@ const onModalSuccess = () => {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {loading ? (
-              <tr><td colSpan="5" className="px-6 py-4 text-center text-slate-500">Loading...</td></tr>
+              [...Array(5)].map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td className="px-6 py-4 hidden md:table-cell"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-48 mb-2"></div><div className="h-3 bg-slate-200 rounded w-32"></div></td>
+                  <td className="px-6 py-4 hidden md:table-cell"><div className="h-6 bg-slate-200 rounded w-16"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+                  <td className="px-6 py-4 text-right"><div className="h-4 bg-slate-200 rounded w-32 ml-auto"></div></td>
+                </tr>
+              ))
             ) : filteredBooks.length === 0 ? (
               <tr><td colSpan="5" className="px-6 py-4 text-center text-slate-500">No books found.</td></tr>
             ) : filteredBooks.map((book) => (
@@ -199,6 +269,53 @@ const onModalSuccess = () => {
             ))}
           </tbody>
         </table>
+        
+        {/* Pagination Controls */}
+        {!searchQuery && searchType === 'books' && totalPages > 1 && (
+          <div className="bg-white px-4 py-3 border-t border-slate-200 flex items-center justify-between sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-slate-700">
+                  Showing page <span className="font-medium">{page + 1}</span> of <span className="font-medium">{totalPages}</span>
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       ) : searchType === 'users' ? (
         <UserManager searchQuery={searchQuery} />
